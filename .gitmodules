@@ -1,0 +1,3 @@
+[submodule "src/modules/movies-metadata"]
+	path = src/modules/movies-metadata
+	url = git@github.com:clun/movies-metadata.git
