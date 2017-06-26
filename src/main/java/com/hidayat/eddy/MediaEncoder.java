@@ -4,6 +4,7 @@ import com.github.clun.movie.MovieMetadataParser;
 import com.github.clun.movie.domain.Audio;
 import com.github.clun.movie.domain.MovieMetadata;
 import com.github.clun.movie.domain.Video;
+import com.hidayat.eddy.comp.CheckBoxList;
 import net.bramp.ffmpeg.FFmpeg;
 import net.bramp.ffmpeg.FFmpegExecutor;
 import net.bramp.ffmpeg.FFprobe;
@@ -14,8 +15,6 @@ import net.bramp.ffmpeg.progress.ProgressListener;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -31,7 +30,10 @@ public class MediaEncoder {
     private JPanel mainPanel;
     private JTextField dirPath;
     private JButton browse;
+    private JButton ok;
+    private JList filesList;
     private File selectedDir;
+    private ArrayList<Path> videoList;
 
     private MediaEncoder() {
         browse.addActionListener(e -> {
@@ -43,12 +45,13 @@ public class MediaEncoder {
             // User open a file/dir
             if (result == JFileChooser.APPROVE_OPTION) {
                 File selectedDir = choose.getSelectedFile();
-                System.out.println(selectedDir);
 
-                this.selectedDir = selectedDir;
-                dirPath.setText(selectedDir.toString());
-                //openDirectory(selectedDir);
+                setSelectedDir(selectedDir);
             }
+        });
+
+        ok.addActionListener(e -> {
+
         });
     }
 
@@ -58,6 +61,7 @@ public class MediaEncoder {
         jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
         Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
+        // Middle center the window
         jFrame.setLocation(dim.width / 2 - jFrame.getSize().width / 2, dim.height / 2 - jFrame.getSize().height / 2);
 
         jFrame.pack();
@@ -65,7 +69,7 @@ public class MediaEncoder {
     }
 
     private void openDirectory(File dir) {
-        ArrayList<Path> videoList = this.findVideos(dir);
+        videoList = this.findVideos(dir);
 
         if (videoList.size() > 0) {
             int i = 0;
@@ -190,5 +194,32 @@ public class MediaEncoder {
         }
 
         return videoList;
+    }
+
+    private void setSelectedDir(File selectedDir) {
+        this.selectedDir = selectedDir;
+        dirPath.setText(selectedDir.toString());
+
+        videoList = this.findVideos(selectedDir);
+        setVideoList(videoList);
+
+        // Enable ok button
+        this.ok.setEnabled(true);
+    }
+
+    private void setVideoList(ArrayList<Path> videoList) {
+        this.videoList = videoList;
+
+        int index = 0;
+        for (Path path : videoList) {
+            JCheckBox checkBox = new JCheckBox();
+            checkBox.setSelected(true);
+            checkBox.setText(path.toString());
+
+            filesList.add(checkBox, index);
+            index++;
+        }
+
+        System.out.println(filesList);
     }
 }
