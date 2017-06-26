@@ -1,3 +1,5 @@
+package com.hidayat.eddy;
+
 import com.github.clun.movie.MovieMetadataParser;
 import com.github.clun.movie.domain.Audio;
 import com.github.clun.movie.domain.MovieMetadata;
@@ -10,6 +12,10 @@ import net.bramp.ffmpeg.probe.FFmpegProbeResult;
 import net.bramp.ffmpeg.progress.Progress;
 import net.bramp.ffmpeg.progress.ProgressListener;
 
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -21,9 +27,45 @@ import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("ConstantConditions")
-public class VideoEncoder {
-    private VideoEncoder(String path) {
-        ArrayList<Path> videoList = this.findVideos(path);
+public class MediaEncoder {
+    private JPanel mainPanel;
+    private JTextField dirPath;
+    private JButton browse;
+    private File selectedDir;
+
+    private MediaEncoder() {
+        browse.addActionListener(e -> {
+            JFileChooser choose = new JFileChooser();
+            choose.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            choose.setAcceptAllFileFilterUsed(false);
+            int result = choose.showOpenDialog(browse);
+
+            // User open a file/dir
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File selectedDir = choose.getSelectedFile();
+                System.out.println(selectedDir);
+
+                this.selectedDir = selectedDir;
+                dirPath.setText(selectedDir.toString());
+                //openDirectory(selectedDir);
+            }
+        });
+    }
+
+    public static void main(String[] args) {
+        JFrame jFrame = new JFrame("MediaEncoder.form");
+        jFrame.setContentPane(new MediaEncoder().mainPanel);
+        jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+
+        Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
+        jFrame.setLocation(dim.width / 2 - jFrame.getSize().width / 2, dim.height / 2 - jFrame.getSize().height / 2);
+
+        jFrame.pack();
+        jFrame.setVisible(true);
+    }
+
+    private void openDirectory(File dir) {
+        ArrayList<Path> videoList = this.findVideos(dir);
 
         if (videoList.size() > 0) {
             int i = 0;
@@ -33,13 +75,6 @@ public class VideoEncoder {
                 break;
             }
         }
-    }
-
-    public static void main(String[] args) {
-        String path = args[0];
-        System.out.println(path);
-
-        new VideoEncoder(path);
     }
 
     private void readInfo(Path videoPath) {
@@ -58,13 +93,13 @@ public class VideoEncoder {
         Integer videoWith = movieMetadata.getVideoWidth().get();
         // In pixel
         Integer videoHeight = movieMetadata.getVideoHeight().get();
-
+        // Take only the digits and discard the chars
         double videoFrameRate = Double.parseDouble(movieMetadata.get(Video.FRAMERATE_STRING).get()
                 .replaceAll("([0-9]+)\\s.+", "$1"));
-
+        // Take only the digits and discard the chars
         long audioBitDepth = Long.parseLong(movieMetadata.get(Audio.BITDEPTH_STRING).get()
                 .replaceAll("([0-9]+)\\s.+", "$1"));
-
+        // Take only the digits and discard the chars
         long audioBitrate = Long.parseLong(movieMetadata.get(Audio.BITRATE).get()
                 .replaceAll("([0-9]+)\\s.+", "$1"));
 
@@ -131,24 +166,22 @@ public class VideoEncoder {
             }
         }).run();
 
-        // TODO: Set created time & metadata
 
         System.out.println("Done");
     }
 
-    private ArrayList<Path> findVideos(String path) {
+    private ArrayList<Path> findVideos(File dir) {
         ArrayList<Path> videoList = new ArrayList<>();
-        return findVideos(path, videoList);
+        return findVideos(dir, videoList);
     }
 
-    private ArrayList<Path> findVideos(String path, ArrayList<Path> videoList) {
-        File dir = new File(path);
+    private ArrayList<Path> findVideos(File dir, ArrayList<Path> videoList) {
         File[] files = dir.listFiles();
         assert files != null;
 
         for (File file : files) {
             if (file.isDirectory()) {
-                videoList.addAll(findVideos(file.getPath()));
+                videoList.addAll(findVideos(file));
             }
 
             if (file.getName().endsWith("avi")) {
