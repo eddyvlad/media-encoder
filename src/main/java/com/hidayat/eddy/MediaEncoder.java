@@ -4,7 +4,8 @@ import com.github.clun.movie.MovieMetadataParser;
 import com.github.clun.movie.domain.Audio;
 import com.github.clun.movie.domain.MovieMetadata;
 import com.github.clun.movie.domain.Video;
-import com.hidayat.eddy.comp.CheckBoxList;
+import com.hidayat.eddy.comp.VideoFile;
+import com.hidayat.eddy.comp.PathListRenderer;
 import net.bramp.ffmpeg.FFmpeg;
 import net.bramp.ffmpeg.FFmpegExecutor;
 import net.bramp.ffmpeg.FFprobe;
@@ -15,6 +16,7 @@ import net.bramp.ffmpeg.progress.ProgressListener;
 
 import javax.swing.*;
 import java.awt.*;
+import java.beans.PropertyChangeEvent;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -23,29 +25,34 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("ConstantConditions")
-public class MediaEncoder {
+public class MediaEncoder extends JPanel {
     private JPanel mainPanel;
-    private JTextField dirPath;
-    private JButton browse;
+    private JTextField dirField;
+    private JButton browseButton;
     private JButton ok;
-    private JList filesList;
+    private JList<VideoFile> pathList;
+    private JScrollPane pathListPane;
+    private JProgressBar progress;
+    private JPanel statusPanel;
+    private JLabel statusLabel;
     private File selectedDir;
     private ArrayList<Path> videoList;
 
     private MediaEncoder() {
-        browse.addActionListener(e -> {
+        browseButton.addActionListener(e -> {
             JFileChooser choose = new JFileChooser();
             choose.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
             choose.setAcceptAllFileFilterUsed(false);
-            int result = choose.showOpenDialog(browse);
+            choose.setCurrentDirectory(new File("E:\\My Pictures\\Photo Album"));
+            int result = choose.showOpenDialog(browseButton);
 
             // User open a file/dir
             if (result == JFileChooser.APPROVE_OPTION) {
                 File selectedDir = choose.getSelectedFile();
-
                 setSelectedDir(selectedDir);
             }
         });
@@ -66,19 +73,6 @@ public class MediaEncoder {
 
         jFrame.pack();
         jFrame.setVisible(true);
-    }
-
-    private void openDirectory(File dir) {
-        videoList = this.findVideos(dir);
-
-        if (videoList.size() > 0) {
-            int i = 0;
-            for (Path videoPath : videoList) {
-                readInfo(videoPath);
-                i++;
-                break;
-            }
-        }
     }
 
     private void readInfo(Path videoPath) {
@@ -174,52 +168,54 @@ public class MediaEncoder {
         System.out.println("Done");
     }
 
-    private ArrayList<Path> findVideos(File dir) {
-        ArrayList<Path> videoList = new ArrayList<>();
-        return findVideos(dir, videoList);
-    }
-
-    private ArrayList<Path> findVideos(File dir, ArrayList<Path> videoList) {
-        File[] files = dir.listFiles();
-        assert files != null;
-
-        for (File file : files) {
-            if (file.isDirectory()) {
-                videoList.addAll(findVideos(file));
-            }
-
-            if (file.getName().endsWith("avi")) {
-                videoList.add(file.toPath());
-            }
-        }
-
-        return videoList;
-    }
-
     private void setSelectedDir(File selectedDir) {
         this.selectedDir = selectedDir;
-        dirPath.setText(selectedDir.toString());
+        dirField.setText(this.selectedDir.toString());
 
-        videoList = this.findVideos(selectedDir);
-        setVideoList(videoList);
+        // Wait
 
-        // Enable ok button
-        this.ok.setEnabled(true);
+
+        SwingWorker worker = new ScanDirectory<ArrayList,Void>(selectedDir);
+        worker.addPropertyChangeListener((PropertyChangeEvent evt) -> {
+            switch ((SwingWorker.StateValue)evt.getNewValue()) {
+                case PENDING:
+                    break;
+                case STARTED:
+                    dirField.setEnabled(false);
+                    browseButton.setEnabled(false);
+                    statusLabel.setVisible(true);
+                    ok.setEnabled(false);
+                    break;
+                case DONE:
+                    // Done waiting
+                    dirField.setEnabled(true);
+                    browseButton.setEnabled(true);
+                    statusLabel.setVisible(false);
+                    ok.setEnabled(true);
+
+                    try {
+                        //noinspection unchecked
+                        ArrayList<Path> videoList = (ArrayList<Path>) worker.get();
+                        setPathList(videoList);
+                    } catch (InterruptedException | ExecutionException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+            }
+        });
+
+        worker.execute();
     }
 
-    private void setVideoList(ArrayList<Path> videoList) {
-        this.videoList = videoList;
+    private void setPathList(ArrayList<Path> videoList) {
+        DefaultListModel<VideoFile> videos = new DefaultListModel<>();
 
-        int index = 0;
         for (Path path : videoList) {
-            JCheckBox checkBox = new JCheckBox();
-            checkBox.setSelected(true);
-            checkBox.setText(path.toString());
-
-            filesList.add(checkBox, index);
-            index++;
+            videos.addElement(new VideoFile(path));
         }
 
-        System.out.println(filesList);
+        pathList.setCellRenderer(new PathListRenderer<>());
+        pathList.setModel(videos);
+        pathList.setSelectionInterval(0, videos.getSize() - 1);
     }
 }
