@@ -4,8 +4,8 @@ import com.github.clun.movie.MovieMetadataParser;
 import com.github.clun.movie.domain.Audio;
 import com.github.clun.movie.domain.MovieMetadata;
 import com.github.clun.movie.domain.Video;
-import com.hidayat.eddy.comp.VideoFile;
 import com.hidayat.eddy.comp.PathListRenderer;
+import com.hidayat.eddy.comp.VideoFile;
 import net.bramp.ffmpeg.FFmpeg;
 import net.bramp.ffmpeg.FFmpegExecutor;
 import net.bramp.ffmpeg.FFprobe;
@@ -27,8 +27,6 @@ import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-
-import static net.bramp.ffmpeg.builder.StreamSpecifierType.Video;
 
 @SuppressWarnings("ConstantConditions")
 public class MediaEncoder extends JPanel {

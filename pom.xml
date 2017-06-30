@@ -26,5 +26,13 @@
             <artifactId>ffmpeg</artifactId>
             <version>0.6.1</version>
         </dependency>
+        <dependency>
+            <groupId>com.github.clun.movie</groupId>
+            <artifactId>movie-metadata-parser</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
     </dependencies>
+    <modules>
+        <module>movies-metadata/movie-metadata-parser</module>
+    </modules>
 </project>
