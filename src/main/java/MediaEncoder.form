@@ -82,6 +82,9 @@
             <properties>
               <opaque value="false"/>
             </properties>
+            <clientProperties>
+              <List.isFileList class="java.lang.Boolean" value="true"/>
+            </clientProperties>
           </component>
         </children>
       </scrollpane>

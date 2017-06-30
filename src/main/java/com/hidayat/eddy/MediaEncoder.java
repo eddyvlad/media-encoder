@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import static net.bramp.ffmpeg.builder.StreamSpecifierType.Video;
+
 @SuppressWarnings("ConstantConditions")
 public class MediaEncoder extends JPanel {
     private JPanel mainPanel;
