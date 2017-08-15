@@ -1,32 +1,18 @@
 package com.hidayat.eddy;
 
-import com.github.clun.movie.MovieMetadataParser;
-import com.github.clun.movie.domain.Audio;
-import com.github.clun.movie.domain.MovieMetadata;
-import com.github.clun.movie.domain.Video;
 import com.hidayat.eddy.comp.PathListRenderer;
 import com.hidayat.eddy.comp.VideoFile;
-import net.bramp.ffmpeg.FFmpeg;
-import net.bramp.ffmpeg.FFmpegExecutor;
-import net.bramp.ffmpeg.FFprobe;
-import net.bramp.ffmpeg.builder.FFmpegBuilder;
-import net.bramp.ffmpeg.probe.FFmpegProbeResult;
-import net.bramp.ffmpeg.progress.Progress;
-import net.bramp.ffmpeg.progress.ProgressListener;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.beans.PropertyChangeEvent;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("ConstantConditions")
 public class MediaEncoder extends JPanel {
@@ -60,8 +46,10 @@ public class MediaEncoder extends JPanel {
             }
         });
 
-        ok.addActionListener(e -> {
+        ok.addActionListener((ActionEvent e) -> {
 
+            List<VideoFile> selectedValuesList = pathList.getSelectedValuesList();
+            System.out.println(e);
         });
     }
 
@@ -76,99 +64,6 @@ public class MediaEncoder extends JPanel {
 
         jFrame.pack();
         jFrame.setVisible(true);
-    }
-
-    private void readInfo(Path videoPath) {
-        BasicFileAttributes basicFileAttributes = null;
-        try {
-            basicFileAttributes = Files.readAttributes(videoPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        MovieMetadata movieMetadata = MovieMetadataParser.getInstance().parseFile(videoPath.toString());
-
-        // 2008-05-12T14:14:32Z
-        FileTime fileTime = basicFileAttributes.creationTime();
-        // In pixel
-        Integer videoWith = movieMetadata.getVideoWidth().get();
-        // In pixel
-        Integer videoHeight = movieMetadata.getVideoHeight().get();
-        // Take only the digits and discard the chars
-        double videoFrameRate = Double.parseDouble(movieMetadata.get(Video.FRAMERATE_STRING).get()
-                .replaceAll("([0-9]+)\\s.+", "$1"));
-        // Take only the digits and discard the chars
-        long audioBitDepth = Long.parseLong(movieMetadata.get(Audio.BITDEPTH_STRING).get()
-                .replaceAll("([0-9]+)\\s.+", "$1"));
-        // Take only the digits and discard the chars
-        long audioBitrate = Long.parseLong(movieMetadata.get(Audio.BITRATE).get()
-                .replaceAll("([0-9]+)\\s.+", "$1"));
-
-        System.out.println(videoPath);
-        System.out.println(fileTime);
-        System.out.println(videoFrameRate);
-        System.out.println(videoWith + "x" + videoHeight + "@");
-        System.out.println(audioBitDepth);
-        System.out.println(audioBitrate);
-
-        FFmpeg fFmpeg = null;
-        FFprobe fFprobe = null;
-        try {
-            fFmpeg = new FFmpeg("D:\\Projects\\MediaEncoder\\assets\\ffmpeg.exe");
-            fFprobe = new FFprobe("D:\\Projects\\MediaEncoder\\assets\\ffprobe.exe");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        FFmpegProbeResult probe = null;
-        try {
-            probe = fFprobe.probe(videoPath.toString());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        long bitRate = probe.getFormat().bit_rate;
-        String newFileName = videoPath.toString().replace(".avi", ".mp4");
-
-        FFmpegBuilder builder = new FFmpegBuilder();
-        builder.setInput(videoPath.toString())
-                .addOutput(newFileName)
-                .setFormat("mp4")
-                .setAudioChannels(2)
-                .setAudioCodec("aac")
-                .setAudioQuality(9)
-                .setVideoCodec("libx264")
-                .setVideoFrameRate(videoFrameRate)
-                .setVideoBitRate(bitRate)
-                .setVideoResolution(videoWith, videoHeight)
-                .setStrict(FFmpegBuilder.Strict.NORMAL)
-                .done();
-
-        FFmpegExecutor executor = new FFmpegExecutor(fFmpeg, fFprobe);
-        FFmpegProbeResult finalProbe = probe;
-        executor.createJob(builder, new ProgressListener() {
-
-            // Using the FFmpegProbeResult determine the duration of the input
-            final double duration_ms = TimeUnit.SECONDS.toMicros((long) finalProbe.getFormat().duration);
-
-            @Override
-            public void progress(Progress progress) {
-                double percentage = (progress.out_time_ms / duration_ms) * 100;
-
-                // Print out interesting information about the progress
-                System.out.println(String.format(
-                        "[%.0f%%] frame:%d time:%s s fps:%.0f speed:%.2fx",
-                        percentage,
-                        progress.frame,
-                        TimeUnit.MILLISECONDS.toSeconds(progress.out_time_ms),
-                        progress.fps.doubleValue(),
-                        progress.speed
-                ));
-            }
-        }).run();
-
-
-        System.out.println("Done");
     }
 
     private void setSelectedDir(File selectedDir) {
@@ -226,7 +121,11 @@ public class MediaEncoder extends JPanel {
         DefaultListModel<VideoFile> videos = new DefaultListModel<>();
 
         for (Path path : videoList) {
-            videos.addElement(new VideoFile(path));
+            try {
+                videos.addElement(new VideoFile(path));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
         pathList.setCellRenderer(new PathListRenderer<>());

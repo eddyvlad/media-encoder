@@ -1,9 +1,9 @@
 package com.hidayat.eddy.comp;
 
-import com.github.clun.movie.MovieMetadataParser;
-import com.github.clun.movie.domain.Audio;
-import com.github.clun.movie.domain.MovieMetadata;
-import com.github.clun.movie.domain.Video;
+import net.bramp.ffmpeg.FFmpeg;
+import net.bramp.ffmpeg.FFprobe;
+import net.bramp.ffmpeg.probe.FFmpegProbeResult;
+import net.bramp.ffmpeg.probe.FFmpegStream;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,23 +12,28 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
-import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 @SuppressWarnings("ConstantConditions")
 public class VideoFile {
-    private final Path path;
-    private final FileTime fileTime;
-    private final Integer width;
-    private final Integer height;
-    private final double frameRate;
-    private final int bitRate;
-    private int audioBitrate;
+    private Path path;
+    private FileTime fileTime;
+    private Integer width;
+    private Integer height;
+    private double frameRate;
+    private long bitRate;
+    private long audioBitrate;
+    private FFmpeg ffmpeg;
+    private FFmpegProbeResult ffProbe;
+    private FFmpegStream videoStream;
+    private FFmpegStream audioStream;
     // Maximum path depth to show when `toString()`
     @SuppressWarnings("FieldCanBeLocal")
     private final int toStringDepth = 3;
 
-    public VideoFile(Path path) {
+
+    public VideoFile(Path path) throws IOException {
         this.path = path;
 
         BasicFileAttributes basicFileAttributes = null;
@@ -38,21 +43,52 @@ public class VideoFile {
             e.printStackTrace();
         }
 
-        MovieMetadata movieMetadata = MovieMetadataParser.getInstance().parseFile(this.path.toString());
+        try {
+            initFFmpeg();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         // 2008-05-12T14:14:32Z
         fileTime = basicFileAttributes != null ? basicFileAttributes.creationTime() : null;
         // In pixel
-        width = movieMetadata.getVideoWidth().get();
+        width = videoStream.width;
         // In pixel
-        height = movieMetadata.getVideoHeight().get();
-        // Take only the digits and discard the chars
-        frameRate = Double.parseDouble(strExtractNumbers(movieMetadata.get(Video.FRAMERATE_STRING).get()));
-        bitRate = Integer.parseInt(movieMetadata.get(Video.BITRATE).get());
+        height = videoStream.height;
+        frameRate = videoStream.r_frame_rate.doubleValue();
+        bitRate = videoStream.bit_rate;
+        audioBitrate = audioStream.bit_rate;
+    }
 
-        if ( movieMetadata.getAudioKeys().size() > 0 ) {
-            // Take only the digits and discard the chars
-            audioBitrate = (int) Double.parseDouble(strExtractNumbers(movieMetadata.get(Audio.BITRATE).get()));
+    private void initFFmpeg() throws IOException {
+        String currentDir = System.getProperty("user.dir");
+        String OS = System.getProperty("os.name");
+        String subDir = "/ffmpeg";
+        String osDir = "/win/";
+        String ffmpegName = "ffmpeg.exe";
+        String ffprobeName = "ffprobe.exe";
+
+        if (OS.toLowerCase().contains("mac")) {
+            osDir = "/mac/";
+            ffmpegName = "ffmpeg";
+            ffprobeName = "ffprobe";
+        }
+
+        File ffmpegPath = new File(currentDir + subDir + osDir + ffmpegName);
+        File ffprobePath = new File(currentDir + subDir + osDir + ffprobeName);
+
+        ffmpeg = new FFmpeg(ffmpegPath.getPath());
+        ffProbe = new FFprobe(ffprobePath.getPath()).probe(path.toString());
+
+        // Find video stream
+        videoStream = null;
+        audioStream = null;
+        for (FFmpegStream stream : ffProbe.getStreams()) {
+            if (Objects.equals(stream.codec_type.name(), "VIDEO")) {
+                videoStream = stream;
+            } else if (Objects.equals(stream.codec_type.name(), "AUDIO")) {
+                audioStream = stream;
+            }
         }
     }
 
@@ -63,16 +99,15 @@ public class VideoFile {
 
         int splitLength = split.length;
 
-        StringBuilder shortPathStr = new StringBuilder();
-        int depth = toStringDepth + 1;
-        for (int i = splitLength - toStringDepth; i <= depth; i++) {
-            shortPathStr.append(split[i]);
-            if (i != depth) {
-                shortPathStr.append(File.separator);
+        StringBuilder shortPath = new StringBuilder();
+        for (int i = (splitLength-toStringDepth-1); i < splitLength; i++) {
+            shortPath.append(split[i]);
+            if ( i+1 < splitLength ) {
+                shortPath.append(File.separator);
             }
         }
 
-        return shortPathStr.toString();
+        return shortPath.toString();
     }
 
     /**

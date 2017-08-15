@@ -1,3 +1,0 @@
-[submodule "movies-metadata"]
-	path = movies-metadata
-	url = git@github.com:clun/movies-metadata.git
