@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("ConstantConditions")
 public class MediaEncoder extends JPanel {
+    private String[] supportedExtensions = {"avi", "3gp"};
     private JPanel mainPanel;
     private JTextField dirField;
     private JButton browseButton;
@@ -44,10 +45,12 @@ public class MediaEncoder extends JPanel {
 
     private MediaEncoder() {
         browseButton.addActionListener(e -> {
+            String userHomeDir = System.getProperty("user.home");
+
             JFileChooser choose = new JFileChooser();
             choose.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
             choose.setAcceptAllFileFilterUsed(false);
-            choose.setCurrentDirectory(new File("E:\\My Pictures\\Photo Album"));
+            choose.setCurrentDirectory(new File(userHomeDir));
             int result = choose.showOpenDialog(browseButton);
 
             // User open a file/dir
@@ -173,11 +176,9 @@ public class MediaEncoder extends JPanel {
         dirField.setText(this.selectedDir.toString());
 
         // Wait
-
-
-        SwingWorker worker = new ScanDirectory<ArrayList,Void>(selectedDir);
+        SwingWorker worker = new ScanDirectory<ArrayList, Void>(selectedDir, supportedExtensions);
         worker.addPropertyChangeListener((PropertyChangeEvent evt) -> {
-            switch ((SwingWorker.StateValue)evt.getNewValue()) {
+            switch ((SwingWorker.StateValue) evt.getNewValue()) {
                 case PENDING:
                     break;
                 case STARTED:
@@ -196,6 +197,20 @@ public class MediaEncoder extends JPanel {
                     try {
                         //noinspection unchecked
                         ArrayList<Path> videoList = (ArrayList<Path>) worker.get();
+
+                        if (videoList.size() == 0) {
+                            StringBuilder stringBuilder = new StringBuilder();
+                            for (int i = 0; i < supportedExtensions.length; i++) {
+                                stringBuilder.append(supportedExtensions[i]);
+                                if (i + 1 < supportedExtensions.length) {
+                                    stringBuilder.append(",");
+                                }
+                            }
+
+                            statusLabel.setVisible(true);
+                            statusLabel.setText("Unable to find any files with extension " + stringBuilder.toString());
+                        }
+
                         setPathList(videoList);
                     } catch (InterruptedException | ExecutionException e) {
                         e.printStackTrace();

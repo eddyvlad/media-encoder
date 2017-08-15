@@ -1,15 +1,20 @@
 package com.hidayat.eddy;
 
+import org.apache.commons.io.FilenameUtils;
+
 import javax.swing.*;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class ScanDirectory<T, V> extends SwingWorker<ArrayList<Path>, Void> {
-    private final File selectedDir;
+    private String[] supportedExtensions;
+    private File selectedDir;
 
-    ScanDirectory(File selectedDir) {
+    ScanDirectory(File selectedDir, String[] supportedExtensions) {
         this.selectedDir = selectedDir;
+        this.supportedExtensions = supportedExtensions;
     }
 
     private ArrayList<Path> findVideos(File dir) {
@@ -26,7 +31,9 @@ public class ScanDirectory<T, V> extends SwingWorker<ArrayList<Path>, Void> {
                 videoList.addAll(findVideos(file));
             }
 
-            if (file.getName().endsWith("avi")) {
+            String extension = FilenameUtils.getExtension(file.getName().toLowerCase());
+            boolean isSupported = Arrays.asList(supportedExtensions).contains(extension);
+            if (isSupported) {
                 videoList.add(file.toPath());
             }
         }
@@ -34,6 +41,12 @@ public class ScanDirectory<T, V> extends SwingWorker<ArrayList<Path>, Void> {
         return videoList;
     }
 
+    /**
+     * This is the caller to findVideos
+     *
+     * @return Returns ArrayList
+     * @throws Exception doInBackground may throw Exception
+     */
     @Override
     protected ArrayList<Path> doInBackground() throws Exception {
         return findVideos(selectedDir);
