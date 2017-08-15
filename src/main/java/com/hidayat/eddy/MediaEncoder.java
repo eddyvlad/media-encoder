@@ -111,24 +111,32 @@ public class MediaEncoder extends JPanel {
 
     private void okActionListener(ActionEvent e) {
         scrollPane.setVisible(false);
-        Dimension scrollPaneSize = scrollPane.getSize();
-
-        Dimension dimension = new Dimension();
-        dimension.setSize(scrollPaneSize.getWidth(), 0);
-        scrollPane.setSize(dimension);
 
         JProgressBar jProgressBar = new JProgressBar();
+        jProgressBar.setLayout(new BorderLayout());
+        jProgressBar.setStringPainted(true);
+        jProgressBar.setPreferredSize(new Dimension(statusPanel.getWidth(), 100));
 
-        SwingWorker worker = new VideoConversionWorker(pathList);
+        JLabel jLabel = new JLabel();
+
+        statusPanel.setLayout(new BorderLayout());
+        statusPanel.add(jLabel, BorderLayout.NORTH);
+        statusPanel.add(jProgressBar, BorderLayout.AFTER_LAST_LINE);
+        statusPanel.updateUI();
+
+        SwingWorker worker = new VideoConversionWorker(pathList, jLabel, jProgressBar);
         worker.addPropertyChangeListener((PropertyChangeEvent evt) -> {
             switch ((SwingWorker.StateValue) evt.getNewValue()) {
                 case PENDING:
                     break;
                 case STARTED:
+                    ok.setVisible(false);
                     break;
                 case DONE:
-                    scrollPane.setSize(scrollPaneSize);
                     scrollPane.setVisible(true);
+                    ok.setVisible(true);
+                    statusPanel.remove(jLabel);
+                    statusPanel.remove(jProgressBar);
                     break;
             }
         });

@@ -1,7 +1,6 @@
 package com.hidayat.eddy;
 
 import com.hidayat.eddy.comp.VideoFile;
-import net.bramp.ffmpeg.FFmpegUtils;
 import net.bramp.ffmpeg.progress.Progress;
 
 import javax.swing.*;
@@ -10,30 +9,39 @@ import java.util.concurrent.TimeUnit;
 
 public class VideoConversionWorker extends SwingWorker {
     private JList<VideoFile> pathList;
+    private JLabel jLabel;
+    private JProgressBar jProgressBar;
 
-    public VideoConversionWorker(JList<VideoFile> pathList) {
+    public VideoConversionWorker(JList<VideoFile> pathList, JLabel jLabel, JProgressBar jProgressBar) {
         this.pathList = pathList;
+        this.jLabel = jLabel;
+        this.jProgressBar = jProgressBar;
     }
 
     @Override
     protected Object doInBackground() throws Exception {
         List<VideoFile> selectedValue = pathList.getSelectedValuesList();
+        // Calculate total duration
+        double totalDurationSec = 0;
         for (VideoFile videoFile : selectedValue) {
+            totalDurationSec += videoFile.ffProbeResult.getFormat().duration;
+        }
+
+        jProgressBar.setMaximum((int) totalDurationSec);
+        jProgressBar.setMinimum(0);
+
+        int outTimeSec = 0;
+        for (VideoFile videoFile : selectedValue) {
+            int finalOutTimeSec = outTimeSec;
             videoFile.convertToMp4((Progress progress) -> {
-                double durationMs = videoFile.ffProbeResult.getFormat().duration * TimeUnit.SECONDS.toMicros(1);
-                double percentage = 100 / durationMs * progress.out_time_ms;
-
-                System.out.println(String.format(
-                        "[%.0f%%] frame:%d time:%s ms fps:%.0f speed:%.2fx",
-                        percentage,
-                        progress.frame,
-                        FFmpegUtils.millisecondsToString(progress.out_time_ms),
-                        progress.fps.doubleValue(),
-                        progress.speed
-                ));
-
+                int currentOutTimeSec = (int) TimeUnit.MICROSECONDS.toSeconds(progress.out_time_ms) + finalOutTimeSec;
+                jProgressBar.setValue(currentOutTimeSec);
+                jLabel.setText(videoFile.path.getFileName().toString());
                 videoFile.setProgress(progress);
             });
+
+            outTimeSec+= videoFile.ffProbeResult.getFormat().duration;
+            // Set date modified to original
         }
 
         return pathList;

@@ -33,6 +33,10 @@ public class VideoFile {
     @SuppressWarnings("FieldCanBeLocal")
     private final int toStringDepth = 3;
     private Progress progress;
+    /**
+     * The path to the converted file
+     */
+    private File newPath;
 
 
     public VideoFile(Path path) throws IOException {
@@ -45,14 +49,14 @@ public class VideoFile {
             e.printStackTrace();
         }
 
+        // 2008-05-12T14:14:32Z
+        fileTime = basicFileAttributes != null ? basicFileAttributes.creationTime() : null;
+
         try {
             initFFmpeg();
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        // 2008-05-12T14:14:32Z
-        fileTime = basicFileAttributes != null ? basicFileAttributes.creationTime() : null;
     }
 
     private void initFFmpeg() throws IOException {
@@ -96,9 +100,9 @@ public class VideoFile {
         int splitLength = split.length;
 
         StringBuilder shortPath = new StringBuilder();
-        for (int i = (splitLength-toStringDepth-1); i < splitLength; i++) {
+        for (int i = (splitLength - toStringDepth - 1); i < splitLength; i++) {
             shortPath.append(split[i]);
-            if ( i+1 < splitLength ) {
+            if (i + 1 < splitLength) {
                 shortPath.append(File.separator);
             }
         }
@@ -107,16 +111,16 @@ public class VideoFile {
     }
 
     /**
-     * @param progressListener
+     * @param progressListener Progress Listener
      */
     public void convertToMp4(net.bramp.ffmpeg.progress.ProgressListener progressListener) {
-        String newPath = FilenameUtils.removeExtension(path.toString()) + ".mp4";
-        int maxSampleRate = Math.max(FFmpeg.AUDIO_SAMPLE_44100, audioStream.sample_rate);
+        newPath = new File(FilenameUtils.removeExtension(path.toString()) + ".mp4");
+        int maxAudioSampleRate = Math.max(FFmpeg.AUDIO_SAMPLE_44100, audioStream.sample_rate);
 
         FFmpegBuilder builder = new FFmpegBuilder();
         builder.setInput(path.toAbsolutePath().toString())
                 .overrideOutputFiles(true)
-                .addOutput(newPath)
+                .addOutput(newPath.getAbsolutePath())
                 .setVideoBitRate(videoStream.bit_rate)
                 .setVideoCodec("libx264")
                 .setVideoFrameRate(videoStream.r_frame_rate)
@@ -124,7 +128,7 @@ public class VideoFile {
                 .setAudioChannels(audioStream.channels)
                 .setAudioCodec("aac")
                 .setAudioBitRate(audioStream.bit_rate)
-                .setAudioSampleRate(maxSampleRate)
+                .setAudioSampleRate(maxAudioSampleRate)
                 .done();
 
         FFmpegExecutor executor = new FFmpegExecutor(ffmpeg, ffProbe);
@@ -134,5 +138,17 @@ public class VideoFile {
 
     public void setProgress(Progress progress) {
         this.progress = progress;
+
+        if (progress.progress.equals("end")) {
+
+            //noinspection ResultOfMethodCallIgnored
+            newPath.setLastModified(fileTime.toMillis());
+
+            try {
+                Files.setAttribute(newPath.toPath(), "creationTime", fileTime, LinkOption.NOFOLLOW_LINKS);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
