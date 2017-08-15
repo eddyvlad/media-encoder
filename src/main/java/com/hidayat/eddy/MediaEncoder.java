@@ -11,7 +11,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 @SuppressWarnings("ConstantConditions")
@@ -21,36 +20,14 @@ public class MediaEncoder extends JPanel {
     private JTextField dirField;
     private JButton browseButton;
     private JButton ok;
+    private JScrollPane scrollPane;
     private JList<VideoFile> pathList;
-    private JScrollPane pathListPane;
-    private JProgressBar progress;
     private JPanel statusPanel;
     private JLabel statusLabel;
-    private File selectedDir;
-    private ArrayList<Path> videoList;
 
     private MediaEncoder() {
-        browseButton.addActionListener(e -> {
-            String userHomeDir = System.getProperty("user.home");
-
-            JFileChooser choose = new JFileChooser();
-            choose.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-            choose.setAcceptAllFileFilterUsed(false);
-            choose.setCurrentDirectory(new File(userHomeDir));
-            int result = choose.showOpenDialog(browseButton);
-
-            // User open a file/dir
-            if (result == JFileChooser.APPROVE_OPTION) {
-                File selectedDir = choose.getSelectedFile();
-                setSelectedDir(selectedDir);
-            }
-        });
-
-        ok.addActionListener((ActionEvent e) -> {
-
-            List<VideoFile> selectedValuesList = pathList.getSelectedValuesList();
-            System.out.println(e);
-        });
+        browseButton.addActionListener(this::browseBtnActionListener);
+        ok.addActionListener(this::okActionListener);
     }
 
     public static void main(String[] args) {
@@ -67,8 +44,7 @@ public class MediaEncoder extends JPanel {
     }
 
     private void setSelectedDir(File selectedDir) {
-        this.selectedDir = selectedDir;
-        dirField.setText(this.selectedDir.toString());
+        dirField.setText(selectedDir.toString());
 
         // Wait
         SwingWorker worker = new ScanDirectory<ArrayList, Void>(selectedDir, supportedExtensions);
@@ -131,5 +107,48 @@ public class MediaEncoder extends JPanel {
         pathList.setCellRenderer(new PathListRenderer<>());
         pathList.setModel(videos);
         pathList.setSelectionInterval(0, videos.getSize() - 1);
+    }
+
+    private void okActionListener(ActionEvent e) {
+        scrollPane.setVisible(false);
+        Dimension scrollPaneSize = scrollPane.getSize();
+
+        Dimension dimension = new Dimension();
+        dimension.setSize(scrollPaneSize.getWidth(), 0);
+        scrollPane.setSize(dimension);
+
+        JProgressBar jProgressBar = new JProgressBar();
+
+        SwingWorker worker = new VideoConversionWorker(pathList);
+        worker.addPropertyChangeListener((PropertyChangeEvent evt) -> {
+            switch ((SwingWorker.StateValue) evt.getNewValue()) {
+                case PENDING:
+                    break;
+                case STARTED:
+                    break;
+                case DONE:
+                    scrollPane.setSize(scrollPaneSize);
+                    scrollPane.setVisible(true);
+                    break;
+            }
+        });
+
+        worker.execute();
+    }
+
+    private void browseBtnActionListener(ActionEvent e) {
+        String userHomeDir = System.getProperty("user.home");
+
+        JFileChooser choose = new JFileChooser();
+        choose.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        choose.setAcceptAllFileFilterUsed(false);
+        choose.setCurrentDirectory(new File(userHomeDir));
+        int result = choose.showOpenDialog(browseButton);
+
+        // When user open a file/dir
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedDir = choose.getSelectedFile();
+            setSelectedDir(selectedDir);
+        }
     }
 }
