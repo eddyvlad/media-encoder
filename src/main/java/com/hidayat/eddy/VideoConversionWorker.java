@@ -1,6 +1,6 @@
 package com.hidayat.eddy;
 
-import com.hidayat.eddy.comp.VideoFile;
+import com.hidayat.eddy.components.VideoItem;
 import net.bramp.ffmpeg.progress.Progress;
 
 import javax.swing.*;
@@ -8,11 +8,11 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class VideoConversionWorker extends SwingWorker {
-    private JList<VideoFile> pathList;
+    private JList<VideoItem> pathList;
     private JLabel jLabel;
     private JProgressBar jProgressBar;
 
-    public VideoConversionWorker(JList<VideoFile> pathList, JLabel jLabel, JProgressBar jProgressBar) {
+    VideoConversionWorker(JList<VideoItem> pathList, JLabel jLabel, JProgressBar jProgressBar) {
         this.pathList = pathList;
         this.jLabel = jLabel;
         this.jProgressBar = jProgressBar;
@@ -20,18 +20,19 @@ public class VideoConversionWorker extends SwingWorker {
 
     @Override
     protected Object doInBackground() throws Exception {
-        List<VideoFile> selectedValue = pathList.getSelectedValuesList();
+        List<VideoItem> selectedValue = pathList.getSelectedValuesList();
         // Calculate total duration
         double totalDurationSec = 0;
-        for (VideoFile videoFile : selectedValue) {
+        for (VideoItem videoFile : selectedValue) {
             totalDurationSec += videoFile.ffProbeResult.getFormat().duration;
         }
 
         jProgressBar.setMaximum((int) totalDurationSec);
         jProgressBar.setMinimum(0);
 
+        // Increment total duration here
         int outTimeSec = 0;
-        for (VideoFile videoFile : selectedValue) {
+        for (VideoItem videoFile : selectedValue) {
             int finalOutTimeSec = outTimeSec;
             videoFile.convertToMp4((Progress progress) -> {
                 int currentOutTimeSec = (int) TimeUnit.MICROSECONDS.toSeconds(progress.out_time_ms) + finalOutTimeSec;

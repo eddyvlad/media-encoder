@@ -8,11 +8,11 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class ScanDirectory<T, V> extends SwingWorker<ArrayList<Path>, Void> {
+public class ScanDirectoryWorker extends SwingWorker<ArrayList<Path>, Void> {
     private String[] supportedExtensions;
     private File selectedDir;
 
-    ScanDirectory(File selectedDir, String[] supportedExtensions) {
+    ScanDirectoryWorker(File selectedDir, String[] supportedExtensions) {
         this.selectedDir = selectedDir;
         this.supportedExtensions = supportedExtensions;
     }

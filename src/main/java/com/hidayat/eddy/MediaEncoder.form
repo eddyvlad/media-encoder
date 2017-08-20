@@ -57,10 +57,10 @@
         </properties>
         <border type="none"/>
         <children>
-          <component id="f686b" class="javax.swing.JButton" binding="removeOldVideos">
+          <component id="f686b" class="javax.swing.JButton" binding="backupOriginalVideos">
             <constraints border-constraint="West"/>
             <properties>
-              <text value="Delete Old"/>
+              <text value="Backup Original"/>
             </properties>
           </component>
           <component id="fafd2" class="javax.swing.JButton" binding="ok">

@@ -1,11 +1,9 @@
-package com.hidayat.eddy.comp;
+package com.hidayat.eddy.components;
 
 import net.bramp.ffmpeg.FFmpeg;
-import net.bramp.ffmpeg.FFmpegExecutor;
 import net.bramp.ffmpeg.FFprobe;
 import net.bramp.ffmpeg.builder.FFmpegBuilder;
 import net.bramp.ffmpeg.builder.FFmpegOutputBuilder;
-import net.bramp.ffmpeg.job.FFmpegJob;
 import net.bramp.ffmpeg.job.TwoPassFFmpegJob;
 import net.bramp.ffmpeg.probe.FFmpegProbeResult;
 import net.bramp.ffmpeg.probe.FFmpegStream;
@@ -27,13 +25,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 @SuppressWarnings("ConstantConditions")
-public class VideoFile {
+public class VideoItem {
     // Maximum path depth to show when `toString()`
     @SuppressWarnings("FieldCanBeLocal")
     private final int toStringDepth = 3;
     public Path path;
     public FFmpegProbeResult ffProbeResult;
-    public FileTime fileTime;
+    private FileTime fileTime;
     private FFmpeg ffmpeg;
     private FFprobe ffProbe;
     private FFmpegStream videoStream;
@@ -45,7 +43,7 @@ public class VideoFile {
     private File newPath;
 
 
-    public VideoFile(Path path) throws IOException {
+    public VideoItem(Path path) throws IOException {
         this.path = path;
 
         BasicFileAttributes basicFileAttributes = null;
@@ -195,17 +193,6 @@ public class VideoFile {
                 .setPassDirectory(path.getParent().toString());
 
         FFmpegOutputBuilder outputBuilder = builder.addOutput(newPath.toString());
-        /*outputBuilder.setVideoCodec("libx264")
-                .setVideoResolution(videoStream.width, videoStream.height)
-                .setVideoFrameRate(videoStream.r_frame_rate)
-                .setVideoBitRate(videoStream.bit_rate)
-                .setAudioChannels(audioStream.channels)
-                .setAudioCodec("aac")
-                .setAudioBitRate(audioStream.bit_rate)
-                .setAudioSampleRate(audioStream.sample_rate)
-                .addMetaTag("creation_time", fileTime.toString())
-                .setStrict(FFmpegBuilder.Strict.EXPERIMENTAL);*/
-
         outputBuilder.setVideoCodec("libx264")
                 .setFormat("mp4")
                 .addMetaTag("creation_time", fileTime.toString())
@@ -216,9 +203,6 @@ public class VideoFile {
         outputBuilder.done();
         TwoPassFFmpegJob twoPassFFmpegJob = new TwoPassFFmpegJob(ffmpeg, builder, progressListener);
         twoPassFFmpegJob.run();
-        /*FFmpegExecutor executor = new FFmpegExecutor(ffmpeg, ffProbe);
-        FFmpegJob job = executor.createJob(builder, progressListener);
-        job.run();*/
     }
 
     public void setProgress(Progress progress) {

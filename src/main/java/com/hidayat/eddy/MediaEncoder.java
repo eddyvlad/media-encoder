@@ -1,11 +1,10 @@
 package com.hidayat.eddy;
 
-import com.hidayat.eddy.comp.PathListRenderer;
-import com.hidayat.eddy.comp.VideoFile;
+import com.hidayat.eddy.renderers.PathListRenderer;
+import com.hidayat.eddy.components.VideoItem;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.beans.PropertyChangeEvent;
 import java.io.File;
 import java.io.IOException;
@@ -13,7 +12,6 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributeView;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
@@ -25,27 +23,26 @@ public class MediaEncoder extends JPanel {
     private JButton browseButton;
     private JButton ok;
     private JScrollPane scrollPane;
-    private JList<VideoFile> pathList;
+    private JList<VideoItem> pathList;
     private JPanel statusPanel;
     private JLabel statusLabel;
-    private JButton removeOldVideos;
+    private JButton backupOriginalVideos;
 
     private MediaEncoder() {
-        browseButton.addActionListener(this::browseBtnActionListener);
-        ok.addActionListener(this::okActionListener);
-        removeOldVideos.addActionListener(this::removeOldListener);
+        browseButton.addActionListener(e -> browseBtnActionListener());
+        ok.addActionListener(e -> okActionListener());
+        backupOriginalVideos.addActionListener(e -> backupOriginalVideos());
     }
 
     public static void main(String[] args) {
         JFrame jFrame = new JFrame("MediaEncoder.form");
         jFrame.setContentPane(new MediaEncoder().mainPanel);
         jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        jFrame.pack();
 
         Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
         // Middle center the window
         jFrame.setLocation(dim.width / 2 - jFrame.getSize().width / 2, dim.height / 2 - jFrame.getSize().height / 2);
-
-        jFrame.pack();
         jFrame.setVisible(true);
     }
 
@@ -54,7 +51,7 @@ public class MediaEncoder extends JPanel {
         pathList.removeAll();
 
         // Wait
-        SwingWorker worker = new ScanDirectory<ArrayList, Void>(selectedDir, supportedExtensions);
+        SwingWorker worker = new ScanDirectoryWorker(selectedDir, supportedExtensions);
         worker.addPropertyChangeListener((PropertyChangeEvent evt) -> {
             switch ((SwingWorker.StateValue) evt.getNewValue()) {
                 case PENDING:
@@ -101,18 +98,18 @@ public class MediaEncoder extends JPanel {
     }
 
     private void setPathList(ArrayList<Path> videoList) {
-        DefaultListModel<VideoFile> videos = new DefaultListModel<>();
+        DefaultListModel<VideoItem> videos = new DefaultListModel<>();
         pathList.setAutoscrolls(true);
         pathList.setCellRenderer(new PathListRenderer<>());
         pathList.setModel(videos);
 
-        SwingWorker swingWorker = new SwingWorker<DefaultListModel<VideoFile>, Void>() {
+        SwingWorker swingWorker = new SwingWorker<DefaultListModel<VideoItem>, Void>() {
             @Override
-            protected DefaultListModel<VideoFile> doInBackground() throws Exception {
+            protected DefaultListModel<VideoItem> doInBackground() throws Exception {
                 int index = 0;
                 for (Path path : videoList) {
                     try {
-                        videos.addElement(new VideoFile(path));
+                        videos.addElement(new VideoItem(path));
                         pathList.ensureIndexIsVisible(index);
                         index++;
                     } catch (IOException e) {
@@ -133,13 +130,16 @@ public class MediaEncoder extends JPanel {
         swingWorker.execute();
     }
 
-    private void removeOldListener(ActionEvent e) {
-        Iterator<VideoFile> selectedValuesList = pathList.getSelectedValuesList().iterator();
+    /**
+     * Move the old converted videos to a backup directory
+     */
+    private void backupOriginalVideos() {
+        Iterator<VideoItem> selectedValuesList = pathList.getSelectedValuesList().iterator();
 
-        SwingWorker swingWorker = new SwingWorker<Iterator<VideoFile>, Void>() {
+        SwingWorker swingWorker = new SwingWorker<Iterator<VideoItem>, Void>() {
             @Override
-            protected Iterator<VideoFile> doInBackground() throws Exception {
-                selectedValuesList.forEachRemaining((VideoFile videoFile) -> {
+            protected Iterator<VideoItem> doInBackground() throws Exception {
+                selectedValuesList.forEachRemaining((VideoItem videoFile) -> {
                     Path thisPath = videoFile.path;
                     Path rootName = thisPath.getName(0);
                     String newRootName = rootName + " - backup";
@@ -172,7 +172,7 @@ public class MediaEncoder extends JPanel {
                         e1.printStackTrace();
                     }
 
-                    ((DefaultListModel<VideoFile>) pathList.getModel()).removeElement(videoFile);
+                    ((DefaultListModel<VideoItem>) pathList.getModel()).removeElement(videoFile);
                 });
 
                 return selectedValuesList;
@@ -182,7 +182,7 @@ public class MediaEncoder extends JPanel {
         swingWorker.execute();
     }
 
-    private void okActionListener(ActionEvent e) {
+    private void okActionListener() {
         scrollPane.setVisible(false);
 
         JProgressBar jProgressBar = new JProgressBar();
@@ -210,6 +210,7 @@ public class MediaEncoder extends JPanel {
                     ok.setVisible(true);
                     statusPanel.remove(jLabel);
                     statusPanel.remove(jProgressBar);
+                    backupOriginalVideos();
                     break;
             }
         });
@@ -217,7 +218,7 @@ public class MediaEncoder extends JPanel {
         worker.execute();
     }
 
-    private void browseBtnActionListener(ActionEvent e) {
+    private void browseBtnActionListener() {
         String userHomeDir = System.getProperty("user.home");
 
         JFileChooser choose = new JFileChooser();
