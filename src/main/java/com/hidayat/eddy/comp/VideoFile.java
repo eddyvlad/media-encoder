@@ -33,7 +33,7 @@ public class VideoFile {
     private final int toStringDepth = 3;
     public Path path;
     public FFmpegProbeResult ffProbeResult;
-    private FileTime fileTime;
+    public FileTime fileTime;
     private FFmpeg ffmpeg;
     private FFprobe ffProbe;
     private FFmpegStream videoStream;
@@ -225,9 +225,6 @@ public class VideoFile {
         this.progress = progress;
 
         if (progress.progress.equals("end")) {
-            //noinspection ResultOfMethodCallIgnored
-            newPath.setLastModified(fileTime.toMillis());
-
             try {
                 Files.getFileAttributeView(path, BasicFileAttributeView.class).setTimes(fileTime, null, fileTime);
             } catch (IOException e) {

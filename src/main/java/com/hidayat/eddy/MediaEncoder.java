@@ -9,13 +9,17 @@ import java.awt.event.ActionEvent;
 import java.beans.PropertyChangeEvent;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 @SuppressWarnings("ConstantConditions")
 public class MediaEncoder extends JPanel {
-    private String[] supportedExtensions = {"avi", "3gp"};
+    private String[] supportedExtensions = {"avi", "3gp", "mp4"};
     private JPanel mainPanel;
     private JTextField dirField;
     private JButton browseButton;
@@ -24,10 +28,12 @@ public class MediaEncoder extends JPanel {
     private JList<VideoFile> pathList;
     private JPanel statusPanel;
     private JLabel statusLabel;
+    private JButton removeOldVideos;
 
     private MediaEncoder() {
         browseButton.addActionListener(this::browseBtnActionListener);
         ok.addActionListener(this::okActionListener);
+        removeOldVideos.addActionListener(this::removeOldListener);
     }
 
     public static void main(String[] args) {
@@ -45,6 +51,7 @@ public class MediaEncoder extends JPanel {
 
     private void setSelectedDir(File selectedDir) {
         dirField.setText(selectedDir.toString());
+        pathList.removeAll();
 
         // Wait
         SwingWorker worker = new ScanDirectory<ArrayList, Void>(selectedDir, supportedExtensions);
@@ -95,18 +102,84 @@ public class MediaEncoder extends JPanel {
 
     private void setPathList(ArrayList<Path> videoList) {
         DefaultListModel<VideoFile> videos = new DefaultListModel<>();
-
-        for (Path path : videoList) {
-            try {
-                videos.addElement(new VideoFile(path));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
+        pathList.setAutoscrolls(true);
         pathList.setCellRenderer(new PathListRenderer<>());
         pathList.setModel(videos);
-        pathList.setSelectionInterval(0, videos.getSize() - 1);
+
+        SwingWorker swingWorker = new SwingWorker<DefaultListModel<VideoFile>, Void>() {
+            @Override
+            protected DefaultListModel<VideoFile> doInBackground() throws Exception {
+                int index = 0;
+                for (Path path : videoList) {
+                    try {
+                        videos.addElement(new VideoFile(path));
+                        pathList.ensureIndexIsVisible(index);
+                        index++;
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                return videos;
+            }
+        };
+
+        swingWorker.addPropertyChangeListener((PropertyChangeEvent evt) -> {
+            if (evt.getNewValue() == SwingWorker.StateValue.DONE) {
+                pathList.setSelectionInterval(0, videos.getSize() - 1);
+            }
+        });
+
+        swingWorker.execute();
+    }
+
+    private void removeOldListener(ActionEvent e) {
+        Iterator<VideoFile> selectedValuesList = pathList.getSelectedValuesList().iterator();
+
+        SwingWorker swingWorker = new SwingWorker<Iterator<VideoFile>, Void>() {
+            @Override
+            protected Iterator<VideoFile> doInBackground() throws Exception {
+                selectedValuesList.forEachRemaining((VideoFile videoFile) -> {
+                    Path thisPath = videoFile.path;
+                    Path rootName = thisPath.getName(0);
+                    String newRootName = rootName + " - backup";
+
+                    String ps = thisPath.getFileSystem().getSeparator();
+                    StringBuilder newPathStr = new StringBuilder();
+                    newPathStr.append(thisPath.getRoot())
+                            .append(newRootName)
+                            .append(ps);
+
+                    int nameCount = thisPath.getNameCount();
+                    for (int i = 1; i < nameCount; i++) {
+                        newPathStr.append(thisPath.getName(i));
+                        if (i + 1 < nameCount) {
+                            newPathStr.append(ps);
+                        }
+                    }
+
+                    Path newPath = Paths.get(newPathStr.toString());
+                    try {
+                        Files.createDirectories(newPath.getParent());
+                    } catch (IOException e1) {
+                        e1.printStackTrace();
+                    }
+                    try {
+                        Files.move(thisPath, newPath);
+                    } catch (FileAlreadyExistsException ignored) {
+                        // Ignore files already exists
+                    } catch (IOException e1) {
+                        e1.printStackTrace();
+                    }
+
+                    ((DefaultListModel<VideoFile>) pathList.getModel()).removeElement(videoFile);
+                });
+
+                return selectedValuesList;
+            }
+        };
+
+        swingWorker.execute();
     }
 
     private void okActionListener(ActionEvent e) {
