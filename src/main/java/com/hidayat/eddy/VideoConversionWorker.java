@@ -19,7 +19,7 @@ public class VideoConversionWorker extends SwingWorker {
     }
 
     @Override
-    protected Object doInBackground() throws Exception {
+    protected JList<VideoItem> doInBackground() throws Exception {
         List<VideoItem> selectedValue = pathList.getSelectedValuesList();
         // Calculate total duration
         double totalDurationSec = 0;
@@ -38,7 +38,6 @@ public class VideoConversionWorker extends SwingWorker {
                 int currentOutTimeSec = (int) TimeUnit.MICROSECONDS.toSeconds(progress.out_time_ms) + finalOutTimeSec;
                 jProgressBar.setValue(currentOutTimeSec);
                 jLabel.setText(videoFile.path.getFileName().toString());
-                videoFile.setProgress(progress);
             });
 
             outTimeSec+= videoFile.ffProbeResult.getFormat().duration;

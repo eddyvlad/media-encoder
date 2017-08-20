@@ -13,11 +13,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 @SuppressWarnings("ConstantConditions")
 public class MediaEncoder extends JPanel {
-    private String[] supportedExtensions = {"avi", "3gp", "mp4"};
+    private String[] supportedExtensions = {"avi", "3gp", "wmv", "mov"};
     private JPanel mainPanel;
     private JTextField dirField;
     private JButton browseButton;
@@ -210,12 +211,25 @@ public class MediaEncoder extends JPanel {
                     ok.setVisible(true);
                     statusPanel.remove(jLabel);
                     statusPanel.remove(jProgressBar);
+                    setFileTime();
                     backupOriginalVideos();
                     break;
             }
         });
 
         worker.execute();
+    }
+
+    private void setFileTime() {
+        List<VideoItem> selectedVideos = pathList.getSelectedValuesList();
+        for (VideoItem videoItem : selectedVideos) {
+            try {
+                videoItem.setOriginalFileTime();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
     private void browseBtnActionListener() {

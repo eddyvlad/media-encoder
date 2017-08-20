@@ -205,15 +205,7 @@ public class VideoItem {
         twoPassFFmpegJob.run();
     }
 
-    public void setProgress(Progress progress) {
-        this.progress = progress;
-
-        if (progress.progress.equals("end")) {
-            try {
-                Files.getFileAttributeView(path, BasicFileAttributeView.class).setTimes(fileTime, null, fileTime);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+    public void setOriginalFileTime() throws IOException {
+        Files.getFileAttributeView(newPath.toPath(), BasicFileAttributeView.class).setTimes(fileTime, null, fileTime);
     }
 }
