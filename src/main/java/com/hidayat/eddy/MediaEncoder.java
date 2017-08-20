@@ -18,7 +18,7 @@ import java.util.concurrent.ExecutionException;
 
 @SuppressWarnings("ConstantConditions")
 public class MediaEncoder extends JPanel {
-    private String[] supportedExtensions = {"avi", "3gp", "wmv", "mov"};
+    private String[] supportedExtensions = {"avi", "3gp", "wmv", "mov", "mpg"};
     private JPanel mainPanel;
     private JTextField dirField;
     private JButton browseButton;
