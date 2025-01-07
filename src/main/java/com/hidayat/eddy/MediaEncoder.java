@@ -36,7 +36,7 @@ public class MediaEncoder extends JPanel {
     }
 
     public static void main(String[] args) {
-        JFrame jFrame = new JFrame("MediaEncoder.form");
+        JFrame jFrame = new JFrame("Media Encoder");
         jFrame.setContentPane(new MediaEncoder().mainPanel);
         jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         jFrame.pack();
